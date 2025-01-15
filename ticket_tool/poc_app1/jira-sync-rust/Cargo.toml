@@ -1,0 +1,19 @@
+[package]
+name = "jira-sync-rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.36.0", features = ["full"] }
+reqwest = { version = "0.11.24", features = ["json"] }
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.114"
+duckdb = "0.10.0"
+chrono = { version = "0.4.34", features = ["serde"] }
+anyhow = "1.0.80"
+thiserror = "1.0.57"
+async-trait = "0.1.77"
+log = "0.4.20"
+env_logger = "0.11.2"
+lazy_static = "1.4.0"
+base64 = "0.21.7"

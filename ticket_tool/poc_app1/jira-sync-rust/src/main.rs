@@ -41,7 +41,9 @@ async fn main() {
     };
 
     // Get projects and update config if project_infos is empty
+    println!("{:?}", config.project_infos);
     if config.project_infos.is_empty() {
+        println!("Fetching project list from Jira...");
         info!("Fetching project list from Jira...");
         match jira_sync.get_projects().await {
             Ok(projects) => {

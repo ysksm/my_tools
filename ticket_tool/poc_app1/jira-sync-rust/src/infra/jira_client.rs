@@ -1,5 +1,6 @@
 use reqwest::{Client, header};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use log::debug;
 
 use crate::error::{JiraSyncError, Result};
 use crate::models::{
@@ -36,6 +37,7 @@ impl JiraClient {
 
     pub async fn get_projects(&self) -> Result<Vec<Project>> {
         let url = format!("{}/rest/api/2/project", self.credentials.end_point);
+        debug!("Sending request to JIRA API: GET {}", url);
         let response = self
             .client
             .get(&url)
@@ -58,6 +60,7 @@ impl JiraClient {
 
     pub async fn get_fields(&self) -> Result<Vec<Field>> {
         let url = format!("{}/rest/api/2/field", self.credentials.end_point);
+        debug!("Sending request to JIRA API: GET {}", url);
         let response = self
             .client
             .get(&url)
@@ -79,7 +82,9 @@ impl JiraClient {
     }
 
     pub async fn search_issues(&self, request: SearchRequest) -> Result<SearchResponse> {
-        let url = format!("{}/rest/api/2/search", self.credentials.end_point);
+        let url = format!("{}/rest/api/3/search", self.credentials.end_point);
+        println!("Sending request to JIRA API: POST {}", url);
+        println!("Request body: {}", serde_json::to_string_pretty(&request).unwrap_or_default());
         let response = self
             .client
             .post(&url)

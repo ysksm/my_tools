@@ -51,14 +51,15 @@ pub struct SearchRequest {
 pub struct Issue {
     pub id: String,
     pub key: String,
-    pub expand: String,
+    pub expand: Option<String>,
+    #[serde(rename = "self")]
     pub self_link: String,
     pub fields: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SearchResponse {
-    pub expand: String,
+    pub expand: Option<String>,
     #[serde(rename = "startAt")]
     pub start_at: i32,
     #[serde(rename = "maxResults")]

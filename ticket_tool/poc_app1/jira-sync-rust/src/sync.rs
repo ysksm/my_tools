@@ -165,9 +165,9 @@ impl JiraSync {
         // Add base fields
         field_names.extend(["id", "key", "expand", "self"].iter().map(|s| s.to_string()));
         field_values.extend_from_slice(&[
-            issue.id.to_string(),
+            format!("'{}'", issue.id),
             format!("'{}'", issue.key),
-            format!("'{}'", issue.expand),
+            issue.expand.as_ref().map_or("NULL".to_string(), |e| format!("'{}'", e)),
             format!("'{}'", issue.self_link),
         ]);
 
@@ -211,7 +211,7 @@ impl JiraSync {
             "number" => Ok((field_id.to_string(), value.to_string())),
             "project" | "issuetype" | "priority" | "status" => {
                 let id = value.get("id").and_then(|v| v.as_str()).unwrap_or_default();
-                Ok((format!("{}_id", field_id), id.to_string()))
+                Ok((format!("{}_id", field_id), format!("'{}'", id)))
             }
             "user" => {
                 let account_id = value

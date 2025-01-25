@@ -1,0 +1,26 @@
+### 
+GET {{JIRA_BASE_URL}}/rest/api/3/search HTTP/1.1
+Authorization: Basic {{JIRA_USERNAME}}:{{JIRA_API_TOKEN}}
+
+### Search for issues using JQL enhanced search (POST)
+POST {{JIRA_BASE_URL}}/rest/api/3/search/jql
+Authorization: Basic {{JIRA_USERNAME}}:{{JIRA_API_TOKEN}}
+
+### Search for issues using JQL enhanced search (GET)
+# @name first_request
+@jql=project = todo AND status = "To Do"
+@nextPageToken=
+@maxResults=10
+@fields=summary,description
+@expand=changelog,names
+@request_path=?jql={{jql}}&&maxResults={{maxResults}}&fields={{fields}}&expand={{expand}}
+GET {{JIRA_BASE_URL}}/rest/api/3/search/jql{{request_path}}
+Authorization: Basic {{JIRA_USERNAME}}:{{JIRA_API_TOKEN}}
+
+
+### レスポンスのnextPageTokenを使って次のページを取得
+@nextPageToken={{first_request.response.body.$.nextPageToken}}
+@request_path2=?jql={{jql}}&&maxResults={{maxResults}}&fields={{fields}}&expand={{expand}}&nextPageToken={{nextPageToken}}
+GET {{JIRA_BASE_URL}}/rest/api/3/search/jql{{request_path2}}
+Authorization: Basic {{JIRA_USERNAME}}:{{JIRA_API_TOKEN}}
+```

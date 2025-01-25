@@ -1,0 +1,10 @@
+
+### 
+GET {{JIRA_BASE_URL}}/rest/api/3/project HTTP/1.1
+content-type: application/json
+Authorization: Basic {{JIRA_USERNAME}}:{{JIRA_API_TOKEN}}
+
+### プロジェクト一覧取得
+### Get projects paginated
+GET {{JIRA_BASE_URL}}/rest/api/3/project/search
+Authorization: Basic {{JIRA_USERNAME}}:{{JIRA_API_TOKEN}}

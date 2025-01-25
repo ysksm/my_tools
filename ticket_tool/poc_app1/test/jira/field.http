@@ -1,0 +1,7 @@
+GET {{JIRA_BASE_URL}}/rest/api/3/field HTTP/1.1
+Authorization: Basic {{JIRA_USERNAME}}:{{JIRA_API_TOKEN}}
+
+
+###
+GET {{JIRA_BASE_URL}}/rest/api/3/field/search HTTP/1.1
+Authorization: Basic {{JIRA_USERNAME}}:{{JIRA_API_TOKEN}}

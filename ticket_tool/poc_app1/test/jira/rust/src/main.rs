@@ -69,11 +69,12 @@ async fn create_headers(username: &str, api_token: &str) -> Result<HeaderMap, Bo
     Ok(headers)
 }
 
-async fn request_api(headers: HeaderMap, url: &str) {
+async fn request_api(headers: HeaderMap, url: &str, filename: &str) {
     println!("Requesting projects from: {}", url);
     let response = request(url, headers).await;
     match response {
         Ok(_body) => {
+            
             // println!("Response: {}", body);
         },
         Err(e) => {
@@ -93,7 +94,32 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // JIRAのプロジェクト一覧を取得
     let projects_url = format!("{}/rest/api/3/project", config.api.jira_base_url);
-    request_api(headers, &projects_url).await;
+    request_api(headers.clone(), &projects_url).await;
+
+    // 
+    let projects_search_url = format!("{}/rest/api/3/project/search", config.api.jira_base_url);
+    request_api(headers.clone(), &projects_search_url).await;
+
+
+    // let projects_url = format!("{}/rest/api/3/field", config.api.jira_base_url);
+    // request_api(headers, &projects_url).await;
+
+    // // 
+    // let projects_url = format!("{}/rest/api/3/field/search", config.api.jira_base_url);
+    // request_api(headers, &projects_url).await;
+    // Issue
+
+    let jql = "project = todo";
+    let maxResults = 10;
+    let fields = "suummary,description";
+    let expand = "changelog,names";
+    let requestPath = format!("?jql={}&maxResults={}&fields={}&epand={}", jql, maxResults, fields, expand);
+    let issuePath = format!("{}/rest/api/3/search/jql{}", config.api.jira_base_url, requestPath);
+    request_api(headers.clone(), &issuePath).await;
+    // // 
+    // let projects_url = format!("{}/rest/api/3/search/jql", config.api.jira_base_url);
+    // request_api(headers, &projects_url).await;
+
 
 
     Ok(())

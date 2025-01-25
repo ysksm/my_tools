@@ -34,18 +34,16 @@ async fn request(url: &str, headers: HeaderMap) -> Result<String, Box<dyn Error>
         .await?;
 
     println!("Status: {}", response.status());
-    println!("Response headers: {:#?}", response.headers());
-
+    
     if !response.status().is_success() {
         return Err(format!("Request failed with status: {}", response.status()).into());
     }
 
     let body = response.text().await?;
-    println!("Raw response body: {}", body);
     Ok(body)
 }
 
-fn create_headers(username: &str, api_token: &str) -> Result<HeaderMap, Box<dyn Error>> {
+async fn create_headers(username: &str, api_token: &str) -> Result<HeaderMap, Box<dyn Error>> {
     let mut headers = HeaderMap::new();
     
     // Basic認証ヘッダーの作成
@@ -68,9 +66,20 @@ fn create_headers(username: &str, api_token: &str) -> Result<HeaderMap, Box<dyn 
         reqwest::header::ACCEPT,
         HeaderValue::from_static("application/json")
     );
-
-    println!("Request headers: {:#?}", headers);
     Ok(headers)
+}
+
+async fn request_api(headers: HeaderMap, url: &str) {
+    println!("Requesting projects from: {}", url);
+    let response = request(url, headers).await;
+    match response {
+        Ok(_body) => {
+            // println!("Response: {}", body);
+        },
+        Err(e) => {
+            println!("Error: {}", e);
+        }
+    }
 }
 
 #[tokio::main]
@@ -78,29 +87,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // 設定ファイルを読み込む
     let config_data = fs::read_to_string("config.toml").await?;
     let config: Config = toml::from_str(&config_data)?;
-    println!("Loaded config: {:#?}", config);
-
+    
     // ヘッダーを作成
-    let headers = create_headers(&config.api.jira_username, &config.api.jira_api_token)?;
+    let headers = create_headers(&config.api.jira_username, &config.api.jira_api_token).await?;
 
     // JIRAのプロジェクト一覧を取得
     let projects_url = format!("{}/rest/api/3/project", config.api.jira_base_url);
-    println!("Requesting projects from: {}", projects_url);
-    
-    match request(&projects_url, headers).await {
-        Ok(response) => {
-            match serde_json::from_str::<Vec<Project>>(&response) {
-                Ok(projects) => {
-                    println!("Projects found: {}", projects.len());
-                    for project in projects {
-                        println!("Project: {} ({})", project.name, project.key);
-                    }
-                }
-                Err(e) => eprintln!("Failed to parse response: {}", e),
-            }
-        },
-        Err(e) => eprintln!("Request failed: {}", e),
-    }
+    request_api(headers, &projects_url).await;
+
 
     Ok(())
 }

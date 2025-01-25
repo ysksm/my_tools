@@ -17,3 +17,4 @@ ticket_tool/poc_app1/test/jira/go/config.json
 
 
 ticket_tool/poc_app1/test/jira/rust/target/
+ticket_tool/poc_app1/test/jira/rust/config.toml

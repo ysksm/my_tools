@@ -13,3 +13,7 @@ ticket_tool/poc_app1/jira-sync-rust/.vscode/launch.json
 .idea/vcs.xml
 my_tools.code-workspace
 
+ticket_tool/poc_app1/test/jira/go/config.json
+
+
+ticket_tool/poc_app1/test/jira/rust/target/

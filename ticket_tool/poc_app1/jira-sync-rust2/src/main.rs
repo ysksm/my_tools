@@ -1,11 +1,11 @@
-use std::error::Error;
+use std::{collections::HashMap, error::Error};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::Deserialize;
 use tokio::fs;
-
-use duckdb::{params, Connection, Result};
+use duckdb::{params, Connection, Result}
+;
 
 #[derive(Debug, Deserialize)]
 struct Config {
@@ -86,11 +86,14 @@ async fn request_get(url: &str, headers: HeaderMap) -> Result<String, Box<dyn Er
     Ok(body)
 }
 
-async fn request_post(url: &str, headers: HeaderMap) -> Result<String, Box<dyn Error>> {
+async fn request_post(url: &str, headers: HeaderMap, request_body: &HashMap<String, String> ) -> Result<String, Box<dyn Error>> {
+    println!("Requesting: {}", url);
+
     let client = reqwest::Client::new();
     let response = client
         .post(url)
         .headers(headers)
+        .json(request_body)
         .send()
         .await?;
 
@@ -101,6 +104,9 @@ async fn request_post(url: &str, headers: HeaderMap) -> Result<String, Box<dyn E
     }
 
     let body = response.text().await?;
+
+    println!("Response: {}", body);
+
     Ok(body)
 }
 
@@ -174,15 +180,36 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     init_db(&config, &headers).await?;
 
+
     // Issue検索
     let jql = "project=todo";
     let max_results = 50;
-    let fields = "summary,description";
+    let fields = ["summary"];
+    let fiedlds_str = format!("[\"{}\"]", fields.join("\",\""));
+    println!("Fields: {}", fiedlds_str);
     let expand = "changelog,names";
-    let request_path = format!("?jql={}&maxResults={}&fields={}&expand={}", jql, max_results, fields, expand);
-    let issue_path = format!("{}/rest/api/3/search/jql{}", config.api.jira_base_url, request_path);
     let issue_output_dir = format!("{}/issues", config.setting.output_dir);
-    request_api(headers.clone(), &issue_path, &issue_output_dir).await;
+
+    let issue_url = format!("{}/rest/api/3/search/jql", config.api.jira_base_url);
+    let mut request_body = HashMap::new();
+    request_body.insert("jql".to_string(), jql.to_string());
+    request_body.insert("maxResults".to_string(), max_results.to_string());
+    // request_body.insert("fields".to_string(), fiedlds);
+    // request_body.insert("expand".to_string(), expand.to_string());
+
+    let response = request_post(&issue_url, headers.clone(), &request_body).await;
+    match response {
+        Ok(body) => {
+            if !std::path::Path::new(&issue_output_dir).exists() {
+                fs::create_dir_all(&issue_output_dir).await.unwrap();
+            }
+            let file_path = format!("{}/issues.json", issue_output_dir);
+            fs::write(&file_path, &body).await.unwrap();
+        },
+        Err(e) => {
+            println!("Error: {}", e);
+        }
+    }
 
     // dbファイルが存在したら削除する
     let db_path = format!("{}/{}", &config.setting.output_dir, db_path);

@@ -1,0 +1,13 @@
+[package]
+name = "jira-sync-rust2"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+duckdb = { version = "1.1.1", features = ["bundled"] }
+reqwest = { version = "0.12.12", features = ["json"]}
+serde = { version = "1.0.217", features = ["derive"]}
+tokio = { version = "1.43.0", features = ["full"] }
+toml = "0.8.19"
+base64 = "0.21.7"
+serde_json = "1.0.137"

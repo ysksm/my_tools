@@ -193,6 +193,15 @@ async fn init_db(config: &Config, headers: &HeaderMap, conn: &mut Connection) ->
             unnest(values)->>'schema'->>'customId' as schema_customId,
         FROM read_json_auto('./{}/{}/*.json')", &config.setting.output_dir, FIELDS_JSON_FILE_PATH);
     conn.execute(&create_sql, params![])?;
+
+    // issuetype一覧取得
+
+    // priority一覧取得
+
+    // status一覧取得
+
+    // user一覧取得
+
     Ok(())
 }
 
@@ -238,7 +247,7 @@ async fn create_issue_request_body(jql: &str, fields: Vec<String>, next_page_tok
     request_body
 }
 
-async fn sync_issues(config: &Config,headers: HeaderMap, conn: &mut Connection) -> Result<(), Box<dyn Error>> {
+async fn sync_issues(config: &Config,headers: HeaderMap, conn: &mut Connection, jql: &str) -> Result<(), Box<dyn Error>> {
     let url = format!("{}/rest/api/3/search/jql", config.api.jira_base_url);
     let dir_path = format!("{}/issues", config.setting.output_dir);
     if !std::path::Path::new(&dir_path).exists() {
@@ -257,7 +266,6 @@ async fn sync_issues(config: &Config,headers: HeaderMap, conn: &mut Connection) 
     let mut is_last = false;
     let mut page_count = 0;
     let mut next_page_token = None;
-    let jql = "project=todo order by updated ASC";
 
     while !is_last {
         let request_body = create_issue_request_body(&jql, fields.clone(), next_page_token.clone()).await;
@@ -290,6 +298,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let config_data = fs::read_to_string("config.toml").await?;
     let config: Config = toml::from_str(&config_data)?;
 
+    let project_info_file_path = format!("{}/projects_info.json", config.setting.output_dir);
+
     // DBファイルの準備
     let db_path = "jira.db";
     // dbファイルが存在したら削除する
@@ -304,7 +314,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     init_db(&config, &headers, &mut conn).await?;
 
     // dbからプロジェクトの一覧を取得
-    let project_info_file_path = format!("{}/projects_info.json", config.setting.output_dir);
     
     let mut stmt = conn.prepare("SELECT id, key FROM projects")?;
     let mut rows = stmt.query(params![])?;
@@ -321,12 +330,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
         project_infos.push(project_info);
     }
+
     // output_dirにprojects_info.jsonを作成
     fs::write(&project_info_file_path, serde_json::to_string(&project_infos).unwrap()).await.unwrap();
 
+    // project_info.jsonを読み込む
+    let project_info_data = fs::read_to_string(&project_info_file_path).await?;
+    let project_infos: Vec<ProjectInfo> = serde_json::from_str(&project_info_data).unwrap();
 
-
-    sync_issues(&config, headers, &mut conn).await?;
+    // 同期対象のプロジェクトのみ同期
+    for project_info in project_infos {
+        if !project_info.is_sync {
+            continue;
+        }
+        let jql = project_info.where_condition;
+        sync_issues(&config, headers.clone(), &mut conn, &jql).await?;
+    }
 
     conn.close().unwrap();
     println!("Done");

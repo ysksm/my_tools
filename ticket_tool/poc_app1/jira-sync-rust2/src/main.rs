@@ -2,28 +2,38 @@ use std::{collections::HashMap, error::Error};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::fs;
 use duckdb::{params, Connection, Result}
 ;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Config {
     api: ApiConfig,
     setting: SettingConfig,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct ApiConfig {
     jira_base_url: String,
     jira_username: String,
     jira_api_token: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct SettingConfig {
     output_dir: String,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+struct ProjectInfo {
+    key: String,
+    id: String,
+    is_sync: bool,
+    where_condition: String,
+}
+
+
 
 #[derive(Debug, Deserialize)]
 struct Response {
@@ -134,14 +144,14 @@ async fn request_api(headers: HeaderMap, url: &str, dir_path: &str) {
 
 }
 
-async fn init_db(config: &Config, headers: &HeaderMap, conn: Connection) -> Result<(), Box<dyn Error>> {
+async fn init_db(config: &Config, headers: &HeaderMap, conn: &mut Connection) -> Result<(), Box<dyn Error>> {
 
     // プロジェクト一覧取得
     let projects_search_url = format!("{}/rest/api/3/project/search?expand=description,projectKeys,lead,issueTypes,url,insight", config.api.jira_base_url);
     let projects_ourput_dir = format!("{}/{}", config.setting.output_dir, PROJECT_JSON_FILE_PATH);
     request_api(headers.clone(), &projects_search_url, &projects_ourput_dir).await;
 
-        // プロジェクト一覧テーブル作成
+    // プロジェクト一覧テーブル作成
     let create_sql = format!("CREATE TABLE projects AS 
         SELECT 
             unnest(values)->>'id' as id,
@@ -165,6 +175,24 @@ async fn init_db(config: &Config, headers: &HeaderMap, conn: Connection) -> Resu
     let fields_output_dir = format!("{}/{}", config.setting.output_dir, FIELDS_JSON_FILE_PATH);
     request_api(headers.clone(), &field_paginated_url, &fields_output_dir).await;
 
+    // フィールド一覧テーブル作成
+    let create_sql = format!("CREATE TABLE fields AS 
+        SELECT 
+            unnest(values)->>'id' as id,
+            unnest(values)->>'name' as name,
+            unnest(values)->>'custom' as custom,
+            unnest(values)->>'orderable' as orderable,
+            unnest(values)->>'navigable' as navigable,
+            unnest(values)->>'searchable' as searchable,
+            unnest(values)->>'clauseNames' as clauseNames,
+            unnest(values)->>'schema' as schema,
+            unnest(values)->>'schema'->>'type' as schema_type,
+            unnest(values)->>'schema'->>'system' as schema_system,
+            unnest(values)->>'schema'->>'items' as schema_items,
+            unnest(values)->>'schema'->>'custom' as schema_custom,
+            unnest(values)->>'schema'->>'customId' as schema_customId,
+        FROM read_json_auto('./{}/{}/*.json')", &config.setting.output_dir, FIELDS_JSON_FILE_PATH);
+    conn.execute(&create_sql, params![])?;
     Ok(())
 }
 
@@ -210,18 +238,26 @@ async fn create_issue_request_body(jql: &str, fields: Vec<String>, next_page_tok
     request_body
 }
 
-async fn sync_issues(config: &Config,headers: HeaderMap, fields: Vec<String>) -> Result<(), Box<dyn Error>> {
-
+async fn sync_issues(config: &Config,headers: HeaderMap, conn: &mut Connection) -> Result<(), Box<dyn Error>> {
     let url = format!("{}/rest/api/3/search/jql", config.api.jira_base_url);
     let dir_path = format!("{}/issues", config.setting.output_dir);
     if !std::path::Path::new(&dir_path).exists() {
         fs::create_dir_all(&dir_path).await.unwrap();
     }
 
+    // DBからフィールド一覧取得
+    let mut fields = Vec::new();
+    let mut stmt = conn.prepare("SELECT id FROM fields")?;
+    let mut rows = stmt.query(params![])?;
+    while let Some(row) = rows.next()? {
+        let field_name: String = row.get("id")?;
+        fields.push(field_name);
+    }
+    
     let mut is_last = false;
     let mut page_count = 0;
     let mut next_page_token = None;
-    let jql = "project=todo order by ";
+    let jql = "project=todo order by updated ASC";
 
     while !is_last {
         let request_body = create_issue_request_body(&jql, fields.clone(), next_page_token.clone()).await;
@@ -231,7 +267,6 @@ async fn sync_issues(config: &Config,headers: HeaderMap, fields: Vec<String>) ->
                 let file_path = format!("{}/{}.json", dir_path, page_count);
                 fs::write(&file_path, &body).await.unwrap();
                 let response: Response2 = serde_json::from_str(&body).unwrap();
-
                 if let Some(next_page_token_text) = response.next_page_token {
                     next_page_token = Some(next_page_token_text);
                 } else {
@@ -255,6 +290,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let config_data = fs::read_to_string("config.toml").await?;
     let config: Config = toml::from_str(&config_data)?;
 
+    // DBファイルの準備
     let db_path = "jira.db";
     // dbファイルが存在したら削除する
     let db_path = format!("{}/{}", &config.setting.output_dir, db_path);
@@ -262,35 +298,35 @@ async fn main() -> Result<(), Box<dyn Error>> {
         fs::remove_file(&db_path).await?;
         println!("Removed existing db file");
     }
-    let conn = Connection::open(db_path)?;
+    let mut conn = Connection::open(db_path)?;
     // ヘッダーを作成
     let headers = create_headers(&config.api.jira_username, &config.api.jira_api_token).await?;
-    init_db(&config, &headers, conn).await?;
+    init_db(&config, &headers, &mut conn).await?;
 
-    // sync_issues(&config, headers).await?;
+    // dbからプロジェクトの一覧を取得
+    let project_info_file_path = format!("{}/projects_info.json", config.setting.output_dir);
+    
+    let mut stmt = conn.prepare("SELECT id, key FROM projects")?;
+    let mut rows = stmt.query(params![])?;
+    let mut project_infos: Vec<ProjectInfo> = Vec::new();
+
+    while let Some(row) = rows.next()? {
+        let id: String = row.get("id")?;
+        let key: String = row.get("key")?;
+        let project_info = ProjectInfo {
+            key: key.clone(),
+            id: id,
+            is_sync: false,
+            where_condition: format!("project = '{}'", key.clone()).to_string(),
+        };
+        project_infos.push(project_info);
+    }
+    // output_dirにprojects_info.jsonを作成
+    fs::write(&project_info_file_path, serde_json::to_string(&project_infos).unwrap()).await.unwrap();
 
 
 
-
-
-    // // フィールド一覧テーブル作成
-    // let create_sql = format!("CREATE TABLE fields AS 
-    //     SELECT 
-    //         unnest(values)->>'id' as id,
-    //         unnest(values)->>'name' as name,
-    //         unnest(values)->>'custom' as custom,
-    //         unnest(values)->>'orderable' as orderable,
-    //         unnest(values)->>'navigable' as navigable,
-    //         unnest(values)->>'searchable' as searchable,
-    //         unnest(values)->>'clauseNames' as clauseNames,
-    //         unnest(values)->>'schema' as schema,
-    //         unnest(values)->>'schema'->>'type' as schema_type,
-    //         unnest(values)->>'schema'->>'system' as schema_system,
-    //         unnest(values)->>'schema'->>'items' as schema_items,
-    //         unnest(values)->>'schema'->>'custom' as schema_custom,
-    //         unnest(values)->>'schema'->>'customId' as schema_customId,
-    //     FROM read_json_auto('./{}/{}/*.json')", &config.setting.output_dir, FIELDS_JSON_FILE_PATH);
-    // conn.execute(&create_sql, params![])?;
+    sync_issues(&config, headers, &mut conn).await?;
 
     conn.close().unwrap();
     println!("Done");

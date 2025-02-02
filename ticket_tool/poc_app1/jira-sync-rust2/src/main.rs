@@ -149,6 +149,10 @@ async fn init_db(config: &Config, headers: &HeaderMap, conn: &mut Connection) ->
     // プロジェクト一覧取得
     let projects_search_url = format!("{}/rest/api/3/project/search?expand=description,projectKeys,lead,issueTypes,url,insight", config.api.jira_base_url);
     let projects_ourput_dir = format!("{}/{}", config.setting.output_dir, PROJECT_JSON_FILE_PATH);
+    // ディレクトリが存在しない場合は作成
+    if !std::path::Path::new(&projects_ourput_dir).exists() {
+        fs::create_dir_all(&projects_ourput_dir).await.unwrap();
+    }
     request_api(headers.clone(), &projects_search_url, &projects_ourput_dir).await;
 
     // プロジェクト一覧テーブル作成
@@ -299,12 +303,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let config: Config = toml::from_str(&config_data)?;
 
     let project_info_file_path = format!("{}/projects_info.json", config.setting.output_dir);
+    // outputディレクトリの存在確認
+    if !std::path::Path::new(&config.setting.output_dir).exists() {
+        fs::create_dir_all(&config.setting.output_dir).await.unwrap();
+    }
 
     // DBファイルの準備
     let db_path = "jira.db";
-    // dbファイルが存在したら削除する
     let db_path = format!("{}/{}", &config.setting.output_dir, db_path);
+    println!("DB Path: {}", db_path);
+    // 
+    
+    // dbファイルが存在したら削除する
     if std::path::Path::new(&db_path).exists() {
+        println!("Removing existing db file");
         fs::remove_file(&db_path).await?;
         println!("Removed existing db file");
     }

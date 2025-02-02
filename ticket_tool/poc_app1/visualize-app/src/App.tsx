@@ -29,62 +29,43 @@ await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
 
 const c = await db.connect();
 
+// Load jira.db file
+const response = await fetch('/poc_app1/output/jira.db');
+const arrayBuffer = await response.arrayBuffer();
+await db.registerFileBuffer('jira.db', new Uint8Array(arrayBuffer));
 
+// Attach the database
+await c.query(`ATTACH 'jira.db' AS jira`);
 
-// Create todo table
-await c.query(`
-  CREATE TABLE IF NOT EXISTS todos (
-    id INTEGER PRIMARY KEY,
-    title VARCHAR,
-    completed BOOLEAN,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )
-`);
-
-// Insert sample data
-await c.query(`
-  INSERT INTO todos (id, title, completed) VALUES
-  (1, 'Buy groceries', false),
-  (2, 'Complete project report', true),
-  (3, 'Exercise for 30 minutes', false),
-  (4, 'Read a book', false),
-  (5, 'Clean the house', true)
-`);
-
-// Function to get all todos
-async function getAllTodos() {
-  const result = await c.query(`SELECT * FROM todos ORDER BY id`);
+// Function to get all projects
+async function getAllProjects() {
+  const result = await c.query(`SELECT * FROM jira.projects ORDER BY id`);
   return result.toArray();
 }
 
-// Get initial todos
-const initialTodos = await getAllTodos();
-console.log('Initial todos:', initialTodos);
+// Get initial projects
+const initialProjects = await getAllProjects();
+console.log('Initial projects:', initialProjects);
 
 await c.close();
 
-
 function App() {
-  const [todos, setTodos] = useState(initialTodos)
+  const [projects, setProjects] = useState(initialProjects)
 
   return (
     <>
-      <div className="todo-container">
-        <h1>Todo List</h1>
-        <div className="todo-list">
-          {todos.map((todo: any) => (
-            <div key={todo.id} className="todo-item">
-              <input
-                type="checkbox"
-                checked={todo.completed}
-                readOnly
-              />
-              <span style={{ textDecoration: todo.completed ? 'line-through' : 'none' }}>
-                {todo.title}
-              </span>
-              <span className="todo-date">
-                {new Date(todo.created_at).toLocaleString()}
-              </span>
+      <div className="project-container">
+        <h1>Jira Projects</h1>
+        <div className="project-list">
+          {projects.map((project: any) => (
+            <div key={project.id} className="project-item">
+              <h3>{project.name}</h3>
+              <div className="project-details">
+                <span className="project-key">Key: {project.key}</span>
+                <span className="project-type">Type: {project.type}</span>
+                <span className="project-style">Style: {project.style}</span>
+                <span className="project-id">ID: {project.id}</span>
+              </div>
             </div>
           ))}
         </div>

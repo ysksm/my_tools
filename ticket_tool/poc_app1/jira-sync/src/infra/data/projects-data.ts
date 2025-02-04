@@ -380,7 +380,15 @@ function createFieldNameAndValue(field: FieldData, fieldObjects: any) {
     switch (field.schema?.type) {
         case 'string':
             fieldName = `${field.id}`;
-            fieldValue = fieldObjects[field.id] === null || fieldObjects[field.id] === undefined ? 'null' : `'${fieldObjects[field.id].replace("'", "''")}'`;
+            if(fieldObjects[field.id] !== null && fieldObjects[field.id] !== undefined){
+                fieldValue = `'${fieldObjects[field.id].replace("'", "''")}'`;
+            }else if(fieldObjects[field.id] === null){
+                fieldValue = 'null';
+            }else if(typeof fieldObjects[field.id] !== 'string'){
+                fieldValue = 'null';
+            }else{
+                fieldValue = `'${fieldObjects[field.id].replace("'", "''")}'`;
+            }
             break;
         case 'number':
         case 'date':

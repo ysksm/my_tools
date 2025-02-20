@@ -73,9 +73,13 @@ async fn request_api(headers: HeaderMap, url: &str, filename: &str) {
     println!("Requesting projects from: {}", url);
     let response = request(url, headers).await;
     match response {
-        Ok(_body) => {
-            
-            // println!("Response: {}", body);
+        Ok(body) => {
+            let filePath = format!("output/response/{}", filename);
+            // bodyをファイルに書き込む
+            match fs::write(filePath, body).await {
+                Ok(_) => println!("Successfully wrote response to {}", filename),
+                Err(e) => println!("Error writing to file: {}", e),
+            }
         },
         Err(e) => {
             println!("Error: {}", e);
@@ -94,28 +98,27 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // JIRAのプロジェクト一覧を取得
     let projects_url = format!("{}/rest/api/3/project", config.api.jira_base_url);
-    request_api(headers.clone(), &projects_url).await;
+    request_api(headers.clone(), &projects_url, "projects.json").await;
 
-    // 
-    let projects_search_url = format!("{}/rest/api/3/project/search", config.api.jira_base_url);
-    request_api(headers.clone(), &projects_search_url).await;
+    // プロジェクト検索
+    let projects_search_url = format!("{}/rest/api/3/project/search?expand=description,projectKeys,lead,issueTypes,url,insight", config.api.jira_base_url);
+    request_api(headers.clone(), &projects_search_url, "projects_search.json").await;
+
+    let filed_url = format!("{}/rest/api/3/field", config.api.jira_base_url);
+    request_api(headers.clone(), &filed_url, "fileds.json").await;
+
+    let filed_painated_url = format!("{}/rest/api/3/field/search", config.api.jira_base_url);
+    request_api(headers.clone(), &filed_painated_url, "fileds_search.json").await;
 
 
-    // let projects_url = format!("{}/rest/api/3/field", config.api.jira_base_url);
-    // request_api(headers, &projects_url).await;
-
-    // // 
-    // let projects_url = format!("{}/rest/api/3/field/search", config.api.jira_base_url);
-    // request_api(headers, &projects_url).await;
-    // Issue
-
+    // Issue検索
     let jql = "project = todo";
-    let maxResults = 10;
-    let fields = "suummary,description";
+    let max_results = 10;
+    let fields = "summary,description";
     let expand = "changelog,names";
-    let requestPath = format!("?jql={}&maxResults={}&fields={}&epand={}", jql, maxResults, fields, expand);
-    let issuePath = format!("{}/rest/api/3/search/jql{}", config.api.jira_base_url, requestPath);
-    request_api(headers.clone(), &issuePath).await;
+    let request_path = format!("?jql={}&maxResults={}&fields={}&expand={}", jql, max_results, fields, expand);
+    let issue_path = format!("{}/rest/api/3/search{}", config.api.jira_base_url, request_path);
+    request_api(headers.clone(), &issue_path, "issues.json").await;
     // // 
     // let projects_url = format!("{}/rest/api/3/search/jql", config.api.jira_base_url);
     // request_api(headers, &projects_url).await;

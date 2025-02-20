@@ -1,3 +1,11 @@
+# 全体
+.idea/
+target/
+output/
+.vscode/
+
+.DS_Store
+
 ticket_tool/poc_app1/jira-sync/output/
 ticket_tool/poc_app1/jira-sync-rust/target/
 ticket_tool/poc_app1/jira-sync-rust/src/models/config.rs
@@ -6,11 +14,8 @@ ticket_tool/poc_app1/jira-sync-rust/src/main.rs
 ticket_tool/poc_app1/jira-sync/bun.lockb
 ticket_tool/poc_app1/jira-sync/package.json
 ticket_tool/poc_app1/jira-sync-rust/.vscode/launch.json
-.gitignore
-.idea/misc.xml
-.idea/modules.xml
-.idea/my_tools.iml
-.idea/vcs.xml
+
+
 my_tools.code-workspace
 
 ticket_tool/poc_app1/test/jira/go/config.json
@@ -19,9 +24,7 @@ ticket_tool/poc_app1/test/jira/go/config.json
 ticket_tool/poc_app1/test/jira/rust/target/
 ticket_tool/poc_app1/test/jira/rust/config.toml
 
-target/
+
+ticket_tool/poc_app1/jira-sync-rust2/target
 ticket_tool/poc_app1/jira-sync-rust2/config.toml
 
-output/
-
-.DS_Store

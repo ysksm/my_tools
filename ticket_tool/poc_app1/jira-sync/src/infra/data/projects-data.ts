@@ -381,7 +381,11 @@ function createFieldNameAndValue(field: FieldData, fieldObjects: any) {
         case 'string':
             fieldName = `${field.id}`;
             if(fieldObjects[field.id] !== null && fieldObjects[field.id] !== undefined){
-                fieldValue = `'${fieldObjects[field.id].replace("'", "''")}'`;
+                if(typeof fieldObjects[field.id] === 'string'){
+                    fieldValue = `E'${fieldObjects[field.id].replace(/'/g, "¥'")}'`;
+                }else{
+                    fieldValue = 'null';
+                }
             }else if(fieldObjects[field.id] === null){
                 fieldValue = 'null';
             }else if(typeof fieldObjects[field.id] !== 'string'){

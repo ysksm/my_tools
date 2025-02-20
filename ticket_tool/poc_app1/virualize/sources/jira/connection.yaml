@@ -1,0 +1,4 @@
+name: jira
+type: duckdb
+options:
+  filename: jira.duckdb

@@ -3,8 +3,11 @@
 target/
 output/
 .vscode/
+.evidence/
+.yarn/
 
 .DS_Store
+*.duckdb
 
 ticket_tool/poc_app1/jira-sync/output/
 ticket_tool/poc_app1/jira-sync-rust/target/

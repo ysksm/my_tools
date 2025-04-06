@@ -60,6 +60,10 @@ export const ProjectsData = {
                         fieldsDefinitons.push(`${field.id} JSON`);
                         ViewFields.push(`${field.id} as '${field.name}'`);
                         break;
+                    default:
+                        fieldsDefinitons.push(`${field.id} JSON`);
+                        ViewFields.push(`${field.id} as '${field.name}'`);
+                        break;
                 }
                 
             });
@@ -382,7 +386,7 @@ function createFieldNameAndValue(field: FieldData, fieldObjects: any) {
             fieldName = `${field.id}`;
             if(fieldObjects[field.id] !== null && fieldObjects[field.id] !== undefined){
                 if(typeof fieldObjects[field.id] === 'string'){
-                    fieldValue = `E'${fieldObjects[field.id].replace(/'/g, "¥'")}'`;
+                    fieldValue = `E'${fieldObjects[field.id].replace(/'/g, "''")}'`;
                 }else{
                     fieldValue = 'null';
                 }
@@ -415,6 +419,12 @@ function createFieldNameAndValue(field: FieldData, fieldObjects: any) {
             break;
         case 'array':
         case 'any':
+            if(fieldObjects[field.id] !== null && fieldObjects[field.id] !== undefined){
+                fieldName = `${field.id}`;
+                fieldValue = `'${JSON.stringify(fieldObjects[field.id]).replace("'", "''")}'`;
+            }
+            break;
+        default:
             if(fieldObjects[field.id] !== null && fieldObjects[field.id] !== undefined){
                 fieldName = `${field.id}`;
                 fieldValue = `'${JSON.stringify(fieldObjects[field.id]).replace("'", "''")}'`;

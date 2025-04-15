@@ -1,0 +1,8 @@
+[package]
+name = "proxy_cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-web = "4.10.2"
+awc = "3.6.0"

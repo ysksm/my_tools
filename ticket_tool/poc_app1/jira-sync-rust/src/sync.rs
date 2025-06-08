@@ -98,6 +98,7 @@ impl JiraSync {
                 project_sync_data.last_updated_issue_keys.push(issue.key);
                 project_sync_data.last_updated = issue_updated;
             }
+            // TODO: 取得済みデータから同時刻のKeyを除外
 
             SyncDataManager::save_project_sync_data(&project_sync_data)?;
             total += issues_len;

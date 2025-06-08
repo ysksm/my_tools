@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 use chrono::{DateTime, Utc};
-use log::info;
+use log::{info, error};
 
 use crate::constants::DATA_DIR;
 use crate::error::{JiraSyncError, Result};
@@ -45,6 +45,7 @@ impl JiraSync {
             
             let project_dir = DATA_DIR.join(&project.project_key);
             if !project_dir.exists() {
+                info!("Creating directory for project: {}", project.project_key);
                 fs::create_dir_all(&project_dir)?;
             }
 
@@ -55,11 +56,16 @@ impl JiraSync {
     }
 
     async fn sync_project(&self, project_dir: &PathBuf, project: &ProjectInfo) -> Result<()> {
+        // Initialize database
+        info!("Initializing database for project: {}", project.project_key);
         let db = DatabaseManager::new(project_dir.join("data.duckdb"))?;
         
         // Get fields for database schema
+        info!("Fetching fields for project: {}", project.project_key);
         let fields = self.jira_client.get_fields().await?;
-        db.initialize_tables(&fields).await?;
+        if db.initialize_tables(&fields).await.is_err() {
+            error!("Failed to initialize database tables for project: {}", project.project_key);
+        }
 
         // Get project sync data
         let mut project_sync_data = SyncDataManager::load_project(project)?;
@@ -67,6 +73,7 @@ impl JiraSync {
 
         loop {
             let jql = self.create_jql(&project_sync_data, project);
+            info!("JQL Query: {}", jql);
             let request = self.create_search_request(&jql);
 
             let mut response = self.jira_client.search_issues(request).await?;
@@ -123,6 +130,7 @@ impl JiraSync {
 
         // Insert into database
         let insert_sql = self.create_insert_sql(issue, fields)?;
+        // println!("Insert SQL: {}", insert_sql);
         db.execute(&insert_sql)?;
 
         Ok(())
@@ -132,7 +140,8 @@ impl JiraSync {
         let mut conditions = vec![project.where_condition.clone()];
         
         // Add updated condition
-        let last_updated = sync_data.last_updated.format("%Y-%m-%d %H:%M");
+        // let last_updated = sync_data.last_updated.format("%Y-%m-%d %H:%M");
+        let last_updated = sync_data.last_updated.format("%Y-%m-%d %H:00");
         conditions.push(format!("updated >= '{}'", last_updated));
 
         // Add exclude keys condition
@@ -197,8 +206,19 @@ impl JiraSync {
         schema: &FieldSchema,
         value: &serde_json::Value,
     ) -> Result<(String, String)> {
+
+        // println!("field_id: {}, {}", field_id, schema.r#type.as_str());
+
+        let new_field_name = match schema.r#type.as_str() {
+            "string" | "date" | "datetime" => field_id.to_string(),
+            "number" => field_id.to_string(),
+            "project" | "issuetype" | "priority" | "status" => format!("{}_id", field_id),
+            "user" => format!("{}_accountId", field_id),
+            _ => field_id.to_string(),
+        };
+
         if value.is_null() {
-            return Ok((field_id.to_string(), "null".to_string()));
+            return Ok((new_field_name, "null".to_string()));
         }
 
         match schema.r#type.as_str() {

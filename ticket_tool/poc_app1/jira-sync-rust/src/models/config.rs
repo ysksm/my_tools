@@ -49,7 +49,7 @@ impl ProjectSyncData {
         Self {
             project_key: project.project_key.clone(),
             project_name: project.project_name.clone(),
-            last_updated: Utc::now() - chrono::Duration::days(30),
+            last_updated: Utc::now() - chrono::Duration::days(3000),
             last_updated_issue_keys: Vec::new(),
         }
     }

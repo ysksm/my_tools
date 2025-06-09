@@ -98,7 +98,19 @@ impl JiraSync {
                 project_sync_data.last_updated_issue_keys.push(issue.key);
                 project_sync_data.last_updated = issue_updated;
             }
-            // TODO: 取得済みデータから同時刻のKeyを除外
+
+            info!(
+                "Project: {} {} Processed {} issues.",
+                project.project_key, project.project_name, issues_len
+            );
+
+            let last_updated_issue_keys = self.get_last_updated_issue_keys(&db, project_sync_data.last_updated)?;
+            project_sync_data.last_updated_issue_keys = last_updated_issue_keys;
+
+            info!(
+                "Project: {} {} Processed {} issues. Total: {}",
+                project.project_key, project.project_name, issues_len, total + issues_len
+            );
 
             SyncDataManager::save_project_sync_data(&project_sync_data)?;
             total += issues_len;
@@ -113,6 +125,15 @@ impl JiraSync {
         }
 
         Ok(())
+    }
+
+    fn get_last_updated_issue_keys(&self, db: &DatabaseManager, last_updated: DateTime<Utc>) -> Result<Vec<String>> {
+        let last_updated_hour = last_updated.format("%Y-%m-%d %H:00").to_string();
+        let last_updated_issue_keys_sql = format!("SELECT Key FROM issues WHERE updated >= '{}';", last_updated_hour);
+        info!("Executing SQL to get last updated issue keys: {}", last_updated_issue_keys_sql);
+        let results = db.query(&last_updated_issue_keys_sql)?;
+        info!("Last updated issue keys: {:?}", results);
+        Ok(results.into_iter().map(|(key)| key).collect())
     }
 
     fn process_issue(

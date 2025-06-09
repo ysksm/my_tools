@@ -1,5 +1,6 @@
 use std::path::Path;
 use duckdb::Connection;
+use log::info;
 use crate::error::{JiraSyncError, Result};
 use crate::models::jira::{Field, FieldSchema};
 
@@ -190,5 +191,35 @@ impl DatabaseManager {
             .execute_batch(sql)
             .map_err(|e| JiraSyncError::Database(e))?;
         Ok(())
+    }
+
+    pub fn query(&self, sql: &str) -> Result<Vec<String>> {
+        info!("Executing query: {}", sql);
+        let mut stmt = self.connection.prepare(sql)
+            .map_err(|e| JiraSyncError::Database(e))?;
+        // info!("Prepared statement: {:?}", stmt);
+        let mut iter = stmt.query_map([], |row: &duckdb::Row<'_>| -> duckdb::Result<String> {
+            // Here you can define how to map the row to your desired type
+            // For example, if you want to return a tuple of (String, i32):
+            let s: String = row.get(0)?;
+            Ok(s)
+        })?;
+        info!("Query iterator created successfully.");
+
+        let results = iter
+            .collect::<duckdb::Result<Vec<String>>>()
+            .map_err(|e| JiraSyncError::Database(e))?;
+        
+        if !results.is_empty() {
+            info!("Collected {} results. Logging each:", results.len());
+            for value in &results {
+                info!("Row value: {:?}", value);
+            }
+        } else {
+            info!("Query returned no results.");
+        }
+
+        println!("Query results: {:?}", results);
+        Ok(results)
     }
 }

@@ -29,8 +29,26 @@ pub enum Error {
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 
+    #[error("Serialization error: {0}")]
+    SerializationError(String),
+
+    #[error("Database error: {0}")]
+    DatabaseError(String),
+
     #[error("Unexpected error: {0}")]
     Unexpected(String),
+}
+
+impl From<sqlx::Error> for Error {
+    fn from(err: sqlx::Error) -> Self {
+        Error::DatabaseError(err.to_string())
+    }
+}
+
+impl From<duckdb::Error> for Error {
+    fn from(err: duckdb::Error) -> Self {
+        Error::DatabaseError(err.to_string())
+    }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

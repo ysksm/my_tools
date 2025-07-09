@@ -2,10 +2,12 @@ pub mod api;
 pub mod client;
 pub mod error;
 pub mod models;
+pub mod sync;
 
 pub use client::{Auth, JiraClient, JiraConfig};
 pub use error::{Error, Result};
 pub use models::{SearchRequest, SearchResults};
+pub use sync::{SyncState, SyncStateStore, FileSyncStateStore, SyncResult, ProjectMetadata};
 
 #[cfg(test)]
 mod tests {

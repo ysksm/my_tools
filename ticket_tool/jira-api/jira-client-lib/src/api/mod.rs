@@ -4,6 +4,7 @@ pub mod priority;
 pub mod project;
 pub mod search;
 pub mod status;
+pub mod sync;
 pub mod user;
 
 use crate::{client::JiraClient, error::{Error, Result}};

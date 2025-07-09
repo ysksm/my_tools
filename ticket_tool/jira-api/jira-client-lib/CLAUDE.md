@@ -110,3 +110,29 @@ chrono = { version = "0.4", features = ["serde"] }
 - Deserialize API responses into strongly-typed Rust structs using Serde
 - Follow Rust naming conventions (snake_case for functions/variables, CamelCase for types)
 - Generate data models from the OpenAPI spec where possible to ensure accuracy
+
+## Task 2: Issue Synchronization Implementation
+
+The library includes advanced synchronization features for efficiently fetching JIRA issues with incremental updates:
+
+### Key Components
+- **`sync` module**: Contains synchronization logic and state management
+- **`SyncState`**: Tracks last sync time and excluded keys for deduplication
+- **`SyncStateStore` trait**: Abstraction for persisting sync state
+- **`FileSyncStateStore`**: File-based implementation of sync state persistence
+
+### Implementation Details
+1. **Time Precision Handling**: JIRA API only supports hour-level precision in JQL queries. The implementation truncates timestamps to hour boundaries using `SyncState::truncate_to_hour()`
+2. **Deduplication**: When multiple issues share the same update hour, the system tracks their keys to avoid re-fetching
+3. **Incremental Updates**: Uses `updated >= "YYYY-MM-DD HH:MM"` JQL queries to fetch only changed issues
+4. **Automatic Pagination**: Handles large result sets by fetching in configurable page sizes
+5. **Metadata Fetching**: `get_project_metadata()` fetches all project configuration in parallel
+
+### Usage Example
+```rust
+// Initial full sync
+let sync_result = client.sync_all_issues("PROJECT_KEY", 50).await?;
+
+// Subsequent incremental sync
+let sync_result = client.sync_issues("PROJECT_KEY", Some(previous_state), 50).await?;
+```

@@ -26,6 +26,9 @@ pub enum Error {
     #[error("Invalid input: {0}")]
     InvalidInput(String),
 
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+
     #[error("Unexpected error: {0}")]
     Unexpected(String),
 }

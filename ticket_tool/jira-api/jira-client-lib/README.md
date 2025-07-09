@@ -102,6 +102,53 @@ let request = SearchRequest {
 let results = client.search_issues_post(&request).await?;
 ```
 
+### Issue Synchronization (Incremental Updates)
+
+The library provides advanced synchronization capabilities for efficiently fetching issues with incremental updates:
+
+```rust
+use jira_client_lib::{FileSyncStateStore, SyncStateStore};
+
+// Create a sync state store to persist synchronization state
+let sync_store = FileSyncStateStore::new("./sync_states");
+
+// Load previous sync state (if any)
+let previous_state = sync_store.load("PROJECT_KEY").await?;
+
+// Perform synchronization
+let sync_result = client.sync_issues(
+    "PROJECT_KEY",
+    previous_state,
+    50, // max results per page
+).await?;
+
+// Save the new sync state for next run
+sync_store.save(&sync_result.new_sync_state).await?;
+
+println!("Fetched {} issues", sync_result.total_fetched);
+```
+
+Features:
+- **Incremental Updates**: Only fetches issues updated since the last sync
+- **Handles Time Precision**: JIRA API only supports hour-level precision, the library handles this correctly
+- **Deduplication**: Excludes already-fetched issues when multiple issues share the same update hour
+- **Automatic Pagination**: Fetches all matching issues across multiple pages
+- **State Persistence**: Saves sync state to enable incremental updates on subsequent runs
+
+### Project Metadata
+
+Fetch all metadata for a project in one call:
+
+```rust
+let metadata = client.get_project_metadata("PROJECT_KEY").await?;
+
+// Access project details and configuration
+println!("Project: {}", metadata.project.name);
+println!("Fields: {} available", metadata.fields.len());
+println!("Issue Types: {} available", metadata.issue_types.len());
+println!("Priorities: {} available", metadata.priorities.len());
+```
+
 ## Environment Variables
 
 For the example, you can set these environment variables:
@@ -109,15 +156,27 @@ For the example, you can set these environment variables:
 - `JIRA_BASE_URL`: Your JIRA instance URL (e.g., https://your-domain.atlassian.net)
 - `JIRA_USERNAME`: Your email address
 - `JIRA_API_TOKEN`: Your API token (get it from https://id.atlassian.com/manage-profile/security/api-tokens)
+- `JIRA_PROJECT_KEY`: Project key for sync example (optional, defaults to "TEST")
 
-## Running the Example
+## Running Examples
 
+### Basic usage:
 ```bash
 export JIRA_BASE_URL="https://your-domain.atlassian.net"
 export JIRA_USERNAME="your-email@example.com"
 export JIRA_API_TOKEN="your-api-token"
 
 cargo run --example basic_usage
+```
+
+### Issue synchronization:
+```bash
+export JIRA_BASE_URL="https://your-domain.atlassian.net"
+export JIRA_USERNAME="your-email@example.com"
+export JIRA_API_TOKEN="your-api-token"
+export JIRA_PROJECT_KEY="YOUR_PROJECT"
+
+cargo run --example sync_issues
 ```
 
 ## Running Tests

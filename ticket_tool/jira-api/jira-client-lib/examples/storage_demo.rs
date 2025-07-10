@@ -5,6 +5,8 @@ use std::env;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // .envファイルから環境変数を読み込む
+    dotenv::dotenv().ok();
     let jira_url = env::var("JIRA_URL").expect("JIRA_URL must be set");
     let jira_user = env::var("JIRA_USER").expect("JIRA_USER must be set");
     let jira_api_token = env::var("JIRA_API_TOKEN").expect("JIRA_API_TOKEN must be set");

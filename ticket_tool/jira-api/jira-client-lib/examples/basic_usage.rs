@@ -1,12 +1,15 @@
 use jira_client_lib::{Auth, JiraClient, JiraConfig, SearchRequest};
+use dotenv::dotenv;
 use std::env;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    dotenv().ok();
+    println!("{}", env::var("JIRA_URL").unwrap_or_else(|_| "info".to_string()));
     // Get configuration from environment variables
-    let base_url = env::var("JIRA_BASE_URL")
+    let base_url = env::var("JIRA_URL")
         .unwrap_or_else(|_| "https://your-domain.atlassian.net".to_string());
-    let username = env::var("JIRA_USERNAME")
+    let username = env::var("JIRA_USER")
         .unwrap_or_else(|_| "your-email@example.com".to_string());
     let api_token = env::var("JIRA_API_TOKEN")
         .unwrap_or_else(|_| "your-api-token".to_string());
@@ -23,6 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 1: Get all projects
     println!("Fetching all projects...");
     let projects = client.get_projects().await?;
+    println!("Found {} projects:", projects.len());
     for project in &projects {
         println!("Project: {} ({})", project.name, project.key);
     }

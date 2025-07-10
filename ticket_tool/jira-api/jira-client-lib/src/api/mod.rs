@@ -19,7 +19,7 @@ impl JiraClient {
             .headers(self.build_headers())
             .send()
             .await?;
-        
+        // println!("GET: {:?}", response);
         handle_response(response).await
     }
     
@@ -42,7 +42,7 @@ impl JiraClient {
 
 async fn handle_response<T: DeserializeOwned>(response: reqwest::Response) -> Result<T> {
     let status = response.status();
-    
+    println!("Response status: {}", status);
     match status {
         StatusCode::OK | StatusCode::CREATED => {
             response.json::<T>().await.map_err(Into::into)

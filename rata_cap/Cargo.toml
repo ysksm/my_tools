@@ -1,6 +1,15 @@
 [package]
 name = "rata_cap"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
+ratatui = "0.26"
+pcap = "1.1"
+tokio = { version = "1.35", features = ["full"] }
+crossterm = "0.27"
+chrono = "0.4"
+anyhow = "1.0"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
